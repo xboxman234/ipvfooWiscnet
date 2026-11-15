@@ -94,7 +94,7 @@ function parseUrl(url) {
         break;
       case "wss:":
         tls = true;
-        // fallthrough
+      // fallthrough
       case "ws:":
         ws = true;
         break;
@@ -120,18 +120,18 @@ function updateNAT64(domain, addr) {
     return;
   }
   const packed = parseIP(addr);
-  if (packed.length != 128/4) {
+  if (packed.length != 128 / 4) {
     return;  // not an IPv6 address
   }
   // Heuristic: Don't consider this a NAT64 prefix if the embedded
   // IPv4 address falls under 0.x.x.x/8.  This filters out cases where all
   // traffic is proxied to the same address, assuming that most proxies
   // have a low-numbered suffix like ::1.
-  if (packed.substr(96/4, 2) == '00') {
+  if (packed.substr(96 / 4, 2) == '00') {
     return;
   }
   // If this is a new prefix, the watchOptions callback will handle it.
-  addPackedNAT64(packed.slice(0, 96/4));
+  addPackedNAT64(packed.slice(0, 96 / 4));
 }
 
 class SaveableEntry {
@@ -182,7 +182,7 @@ class SaveableEntry {
         return;
       }
       //console.log("saving", key, j);
-      await chrome.storage.session.set({[key]: j});
+      await chrome.storage.session.set({ [key]: j });
       this.#savedJSON = j;
     }
   }
@@ -224,7 +224,7 @@ class SaveableMap {
     let id;
     try {
       id = this.validateId(suffix);
-    } catch(err) {
+    } catch (err) {
       console.error(err);
       return false;
     }
@@ -290,7 +290,7 @@ class TabInfo extends SaveableEntry {
   tooYoungToDie() {
     // Spare new tabs from garbage collection for a minute or so.
     return (this.#state == TAB_BIRTH &&
-            this.born >= Date.now() - 60*SECONDS);
+      this.born >= Date.now() - 60 * SECONDS);
   }
 
   makeAlive() {
@@ -360,7 +360,7 @@ class TabInfo extends SaveableEntry {
         return;
       }
       d = this.domains[domain] =
-          new DomainInfo(this, domain, addr || "(lost)", dflags | aflags);
+        new DomainInfo(this, domain, addr || "(lost)", dflags | aflags);
       d.countUp();
     } else {
       const oldAddr = d.addr;
@@ -447,15 +447,38 @@ class TabInfo extends SaveableEntry {
       if (action.show) {
         action.show(this.id());  // Firefox only
       }
+      var lastPattern = this.lastPattern;
+
       this.lastPattern = pattern;
       this.save();
+      if (lastPattern.substring(0, 1) != pattern.substring(0, 1)) {
+        var url = 'https://research.wiscnet.net/cgi-bin/ipvfoo.pl';
+        var urlParams = 'foo=' + pattern + '&pw=wiscnet2016';
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(urlParams),
+          cache: "no-cache"
+        })
+          .then(response => {
+            if (!response.ok) {
+              console.error('Network response was not ok');
+            }
+          })
+          .then(data => {
+            console.log('Fetched ipvfoo, foo="' + pattern + '"');
+          })
+          .catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+          });
+      }
     }
   }
 
   pushAll() {
     popups.pushAll(
-        this.id(), this.getTuples(), this.lastPattern, this.color,
-        this.spillCount, options[SAW_HTTP_GT_1]);
+      this.id(), this.getTuples(), this.lastPattern, this.color,
+      this.spillCount, options[SAW_HTTP_GT_1]);
   }
 
   pushOne(domain) {
@@ -608,7 +631,7 @@ function ipCacheGrew() {
   ipCacheSize = flat.length;  // redundant
   for (const cachedAddr of flat) {
     ipCache.remove(cachedAddr.id());
-    if (--ipCacheSize <= IP_CACHE_LIMIT/2) {
+    if (--ipCacheSize <= IP_CACHE_LIMIT / 2) {
       break;
     }
   }
@@ -772,7 +795,7 @@ class Popups {
 
   pushAll(tabId, tuples, pattern, color, spillCount, sawHttpGt1) {
     const cmd = "pushAll";
-    this.ports[tabId]?.postMessage({cmd, tuples, pattern, color, spillCount, sawHttpGt1});
+    this.ports[tabId]?.postMessage({ cmd, tuples, pattern, color, spillCount, sawHttpGt1 });
   };
 
   pushOne(tabId, tuple) {
@@ -878,7 +901,7 @@ class TabTracker {
           this.#removeTab(tabId, "pollAllTabs");
         }
       }
-      await sleep(300*SECONDS);
+      await sleep(300 * SECONDS);
     }
   }
 
@@ -961,7 +984,7 @@ chrome.tabs.onUpdated.addListener(wrap(async (tabId, changeInfo, tab) => {
 // rather than a top-level navigation to a new URL.
 function isProperMainFrame(details) {
   return (details.type == "main_frame" || details.type == "outermost_frame") &&
-      !details.documentId;
+    !details.documentId;
 }
 
 chrome.webRequest.onBeforeRequest.addListener(wrap(async (details) => {
@@ -1094,8 +1117,8 @@ chrome.webRequest.onResponseStarted.addListener(wrap(async (details) => {
 
   // Domain flags
   const dflags =
-      httpFlags(parsed.tls, details.statusLine) |
-      (parsed.ws ? DFLAG_WEBSOCKET : 0);
+    httpFlags(parsed.tls, details.statusLine) |
+    (parsed.ws ? DFLAG_WEBSOCKET : 0);
 
   if (dflags & (DFLAG_H2 | DFLAG_H3)) {
     sawHttpGt1();
@@ -1103,9 +1126,9 @@ chrome.webRequest.onResponseStarted.addListener(wrap(async (details) => {
 
   // Address flags
   const aflags =
-      (requestInfo.prefetch ? AFLAG_PREFETCH : 0) |
-      (details.tabId <= 0 ? AFLAG_WORKER : 0) |
-      (fromCache ? AFLAG_CACHE : 0);
+    (requestInfo.prefetch ? AFLAG_PREFETCH : 0) |
+    (details.tabId <= 0 ? AFLAG_WORKER : 0) |
+    (fromCache ? AFLAG_CACHE : 0);
 
   if (requestInfo.domain) throw `Duplicate onResponseStarted: ${parsed.domain}`;
   requestInfo.domain = parsed.domain;
@@ -1142,7 +1165,7 @@ chrome.contextMenus?.onClicked.addListener((info, tab) => {
   const text = info.selectionText;
   const url = selectionToLookupUrl(text)?.href;
   if (url) {
-    chrome.tabs.create({url});
+    chrome.tabs.create({ url });
   } else {
     // Malformed selection; shake the popup content.
     const tabId = /#(\d+)$/.exec(info.pageUrl);
@@ -1173,8 +1196,8 @@ watchOptions(async (optionsChanged) => {
   }
 
   if (optionsChanged.has(LOOKUP_PROVIDER) ||
-      optionsChanged.has(CUSTOM_PROVIDER_DOMAIN) ||
-      optionsChanged.has(CUSTOM_PROVIDER_IP)) {
+    optionsChanged.has(CUSTOM_PROVIDER_DOMAIN) ||
+    optionsChanged.has(CUSTOM_PROVIDER_IP)) {
     chrome.contextMenus?.removeAll(() => {
       // Show something sensible, even when domain/ip use different providers.
       const title = lookupMenuTitle("example.com", "0.0.0.0");

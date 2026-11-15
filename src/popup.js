@@ -142,10 +142,16 @@ function connectToExtension() {
 
 // Clear the table, and fill it with new data.
 function pushAll(tuples, pattern, color, spillCount, sawHttpGt1) {
+  
   gSawHttpGt1 = sawHttpGt1;
   removeChildren(table);
   for (let i = 0; i < tuples.length; i++) {
-    table.appendChild(makeRow(i == 0, tuples[i]));
+    console.log(tuples[i][1]);
+        console.log(JSON.parse('{\"'+tuples[i][1]+'\":0}'));
+
+    //TYLER: eventually make a post request right here to get sm stuff back and pass in
+    let wiscnetIPAdresses = [];
+    table.appendChild(makeRow(i == 0, tuples[i],wiscnetIPAdresses));
   }
   pushPattern(pattern, color);
   pushSpillCount(spillCount);
@@ -320,12 +326,11 @@ function makeSelectMe(...children) {
   return span;
 }
 
-function makeRow(isFirst, tuple) {
+function makeRow(isFirst, tuple,wiscnetList) {
   const domain = tuple[0];
   const addr = tuple[1];
   const version = tuple[2];
   const flags = tuple[3];
-
   const tr = document.createElement("tr");
   if (isFirst) {
     tr.className = "mainRow";
@@ -395,6 +400,10 @@ function makeRow(isFirst, tuple) {
   tr.appendChild(domainTd);
   tr.appendChild(addrTd);
   tr.appendChild(cacheTd);
+  const test = document.createElement("td");
+  test.appendChild(makeImg("icon16.png","CHANGE THIS LATER TO WISCNET OR NOT WISCNET"));
+  tr.appendChild(test);
+  
   return tr;
 }
 
