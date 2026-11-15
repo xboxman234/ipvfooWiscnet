@@ -5,10 +5,10 @@ app = Flask(__name__)
 @app.route("/api/lookup", methods=["POST"])
 def lookup_ips():
     data = request.get_json()          # Reads the JSON sent by your extension
-    ip_list = data.get("ips", [])      # Extracts ["1.1.1.1", "8.8.8.8"]
-
+    data=data.get("ips", [])
+    testList = ["192.178.214.95"]
     # Process the IPs here
-    results = [{"ip": ip, "status": "checked"} for ip in ip_list]
+    results = [ip in testList  for ip in data]
 
     return jsonify({"results": results})
 

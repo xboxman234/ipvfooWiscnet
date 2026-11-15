@@ -29,7 +29,7 @@ const tabId = window.location.hash.substr(1);
 let table = null;
 let gSawHttpGt1 = false;
 
-window.onload = async function() {
+window.onload = async function () {
   table = document.getElementById("addr_table");
   table.onmousedown = handleMouseDown;
 
@@ -80,7 +80,7 @@ async function beg() {
     // We need to close the popup before awaiting, otherwise
     // Firefox (at least version 116 on Windows) renders the
     // permission dialog underneath the popup.
-    const promise = chrome.permissions.request({origins: [ALL_URLS]});
+    const promise = chrome.permissions.request({ origins: [ALL_URLS] });
     window.close();
     await promise;
   });
@@ -116,7 +116,7 @@ function redrawLookupBubble() {
 }
 
 function connectToExtension() {
-  const port = chrome.runtime.connect(null, {name: tabId});
+  const port = chrome.runtime.connect(null, { name: tabId });
   port.onMessage.addListener((msg) => {
     document.bgColor = "";
     //console.log("onMessage", msg.cmd, msg);
@@ -139,20 +139,63 @@ function connectToExtension() {
     setTimeout(connectToExtension, 1);
   });
 }
+async function sendIpsToServer(ipArray) {
+  try {
+    // 1. Send the POST request to your Flask server
+    const response = await fetch("http://127.0.0.1:5000/api/lookup", {
+      method: "POST",
+      headers: {
+        // Tells Flask: "The body I'm sending you is formatted as JSON"
+        "Content-Type": "application/json"
+      },
+      // Converts your JS array ["1.1.1.1", "8.8.8.8"] into a JSON text string
+      body: JSON.stringify({ ips: ipArray })
+    });
+
+    // 2. Check if Flask returned an error status (like 404 or 500)
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    // 3. Unpack the JSON response Flask sent back
+    const data = await response.json();
+
+    // "data" is now a normal JS object matching what Flask returned:
+    // { results: [ { ip: "1.1.1.1", status: "checked" }, ... ] }
+    console.log("Got back from Python:", data.results);
+    return data.results;
+
+  } catch (error) {
+    console.error("Failed to talk to server:", error);
+  }
+}
+
+// Example usage:
 
 // Clear the table, and fill it with new data.
 function pushAll(tuples, pattern, color, spillCount, sawHttpGt1) {
-  
+
   gSawHttpGt1 = sawHttpGt1;
   removeChildren(table);
-  for (let i = 0; i < tuples.length; i++) {
-    console.log(tuples[i][1]);
-        console.log(JSON.parse('{\"'+tuples[i][1]+'\":0}'));
-
-    //TYLER: eventually make a post request right here to get sm stuff back and pass in
-    let wiscnetIPAdresses = [];
-    table.appendChild(makeRow(i == 0, tuples[i],wiscnetIPAdresses));
+  //collect ips into one array
+  let ips = []
+  for (let i of tuples) {
+    ips.push(i[1])
   }
+  console.log(JSON.stringify(ips))
+  console.log("ips:")
+  console.table(ips);
+  let wiscList = sendIpsToServer(ips);
+  wiscList.then(data => {
+
+
+    for (let i = 0; i < tuples.length; i++) {
+      //pass this into the server
+      //console.log(JSON.parse('{\"'+ips[i]+'\":0}'));
+
+      table.appendChild(makeRow(i == 0, tuples[i], data[i]));
+    }
+  })
   pushPattern(pattern, color);
   pushSpillCount(spillCount);
 }
@@ -208,9 +251,9 @@ function pushPattern(pattern, color) {
 // Count must be a number.
 function pushSpillCount(count) {
   document.getElementById("spill_count_container").style.display =
-      count == 0 ? "none" : "block";
+    count == 0 ? "none" : "block";
   removeChildren(document.getElementById("spill_count")).appendChild(
-      document.createTextNode(count));
+    document.createTextNode(count));
   if (IS_MOBILE) {
     zoomHack();
   } else {
@@ -221,7 +264,7 @@ function pushSpillCount(count) {
 // Shake the content (for 500ms) to signal an error.
 function shake() {
   document.body.className = "shake";
-  setTimeout(function() {
+  setTimeout(function () {
     document.body.className = "";
   }, 600);
 }
@@ -260,8 +303,8 @@ function scrollbarHack() {
 function minimalCopy(src, dst) {
   dst.className = src.className;
   for (let s = src.firstChild, d = dst.firstChild, sNext, dNext;
-       s && d;
-       s = sNext, d = dNext) {
+    s && d;
+    s = sNext, d = dNext) {
     sNext = s.nextSibling;
     dNext = d.nextSibling;
     // First, sync up the class names.
@@ -284,33 +327,33 @@ function makeImg(src, title) {
 function makeHttpImg(flags) {
   if (flags & DFLAG_NO_TLS) {
     return makeImg(
-        "gray_unlock.png",
-        "Some connections do not use TLS.");
+      "gray_unlock.png",
+      "Some connections do not use TLS.");
   }
   if (gSawHttpGt1) {
     if (flags & DFLAG_H3) {
       return makeImg(
-          "gray_h3.png",
-          "HTTP/3 (with TLS) is the max version seen.");
+        "gray_h3.png",
+        "HTTP/3 (with TLS) is the max version seen.");
     }
     if (flags & DFLAG_H2) {
       return makeImg(
-          "gray_h2.png",
-          "HTTP/2 (with TLS) is the max version seen.");
+        "gray_h2.png",
+        "HTTP/2 (with TLS) is the max version seen.");
     }
     if (flags & DFLAG_H1) {
       return makeImg(
-          "gray_h1.png",
-          "HTTP/1.x (with TLS) is the max version seen.");
+        "gray_h1.png",
+        "HTTP/1.x (with TLS) is the max version seen.");
     }
   } else if (flags & (DFLAG_H1 | DFLAG_H2 | DFLAG_H3)) {
     return makeImg(
-        "gray_lock.png",
-        "All connections use TLS.");
+      "gray_lock.png",
+      "All connections use TLS.");
   }
   return makeImg(
-      "gray_question.png",
-      "Failed to parse HTTP status.");
+    "gray_question.png",
+    "Failed to parse HTTP status.");
 }
 
 function makeSelectMe(...children) {
@@ -326,7 +369,7 @@ function makeSelectMe(...children) {
   return span;
 }
 
-function makeRow(isFirst, tuple,wiscnetList) {
+function makeRow(isFirst, tuple, wiscnetBool) {
   const domain = tuple[0];
   const addr = tuple[1];
   const version = tuple[2];
@@ -344,7 +387,7 @@ function makeRow(isFirst, tuple,wiscnetList) {
   const domainTd = document.createElement("td");
   domainTd.appendChild(httpImg);
   domainTd.appendChild(makeSelectMe(
-      domain.length > LONG_DOMAIN ? makeSnippedText(domain, Math.floor(LONG_DOMAIN / 2)) : domain));
+    domain.length > LONG_DOMAIN ? makeSnippedText(domain, Math.floor(LONG_DOMAIN / 2)) : domain));
   domainTd.className = "domainTd";
   domainTd.onclick = handleClick;
   domainTd.oncontextmenu = handleContextMenu;
@@ -378,19 +421,19 @@ function makeRow(isFirst, tuple,wiscnetList) {
   cacheTd.className = `cacheTd${connectedClass}`;
   if (flags & DFLAG_WEBSOCKET) {
     cacheTd.appendChild(
-        makeImg("websocket.png", "WebSocket handshake; connection may still be active."));
+      makeImg("websocket.png", "WebSocket handshake; connection may still be active."));
     cacheTd.style.paddingLeft = '6pt';
   } else if (flags & AFLAG_PREFETCH) {
     cacheTd.appendChild(
-        makeImg("prefetch.png", "Prefetched request; may be proxied."));
+      makeImg("prefetch.png", "Prefetched request; may be proxied."));
     cacheTd.style.paddingLeft = '6pt';
   } else if (flags & AFLAG_WORKER) {
     cacheTd.appendChild(
-        makeImg("serviceworker.png", "Service Worker request; possibly from a different tab."));
+      makeImg("serviceworker.png", "Service Worker request; possibly from a different tab."));
     cacheTd.style.paddingLeft = '6pt';
   } else if (flags & AFLAG_CACHE) {
     cacheTd.appendChild(
-        makeImg("cached_arrow.png", "Data from cached requests only."));
+      makeImg("cached_arrow.png", "Data from cached requests only."));
     cacheTd.style.paddingLeft = '6pt';
   } else {
     cacheTd.style.paddingLeft = '0';
@@ -401,9 +444,9 @@ function makeRow(isFirst, tuple,wiscnetList) {
   tr.appendChild(addrTd);
   tr.appendChild(cacheTd);
   const test = document.createElement("td");
-  test.appendChild(makeImg("icon16.png","CHANGE THIS LATER TO WISCNET OR NOT WISCNET"));
+  test.appendChild(makeImg(wiscnetBool ? "icon16.png" : "gray_lock.png", "CHANGE THIS LATER TO WISCNET OR NOT WISCNET"));
   tr.appendChild(test);
-  
+
   return tr;
 }
 
@@ -474,7 +517,7 @@ function handleMouseDown(e) {
 
 function sameRange(r1, r2) {
   return (r1.compareBoundaryPoints(Range.START_TO_START, r2) == 0 &&
-          r1.compareBoundaryPoints(Range.END_TO_END, r2) == 0);
+    r1.compareBoundaryPoints(Range.END_TO_END, r2) == 0);
 }
 
 function isSpuriousSelection(sel, newTimeStamp) {
@@ -507,7 +550,7 @@ function handleContextMenu(e) {
 function findSelectMe(node, target) {
   const range = document.createRange();
   range.selectNodeContents(
-      target?.closest(".selectMe") || node.querySelector(".selectMe"));
+    target?.closest(".selectMe") || node.querySelector(".selectMe"));
   return range;
 }
 
