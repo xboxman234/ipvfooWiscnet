@@ -185,6 +185,7 @@ function pushAll(tuples, pattern, color, spillCount, sawHttpGt1) {
   console.log(JSON.stringify(ips))
   console.log("ips:")
   console.table(ips);
+
   let wiscList = sendIpsToServer(ips);
   wiscList.then(data => {
 
@@ -195,7 +196,15 @@ function pushAll(tuples, pattern, color, spillCount, sawHttpGt1) {
 
       table.appendChild(makeRow(i == 0, tuples[i], data[i]));
     }
-  })
+  }).catch(err => {
+    for (let i = 0; i < tuples.length; i++) {
+      //pass this into the server
+      //console.log(JSON.parse('{\"'+ips[i]+'\":0}'));
+
+      table.appendChild(makeRow(i == 0, tuples[i], false));
+    }
+  });
+
   pushPattern(pattern, color);
   pushSpillCount(spillCount);
 }
